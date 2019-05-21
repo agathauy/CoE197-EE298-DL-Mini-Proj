@@ -286,12 +286,20 @@ class GAN():
         predictions = self.generator.predict(noise)
         #print(predictions[0])
         pred_notes = []
+
+
+        old_max = 1
+        old_min = -1
+        new_max = 41
+        new_min = 0
+        old_range = old_max - old_min
+        new_range = new_max - new_min
         for i, x in enumerate(predictions[0]):
-            entry = 0
-            if x < 0:
-                entry = (x+1)*21
-            else:
-                entry = (x*21) + 21
+            entry = (((x - old_min)* new_range)/old_range) + new_min
+            # if x < 0:
+            #     entry = (x+1)*21
+            # else:
+            #     entry = (x*21) + 21
             pred_notes.append(entry)
         #pred_notes = [int((x+1)*89) for x in predictions[0]]
         #pred_notes = [x*242+242 for x in predictions[0]]

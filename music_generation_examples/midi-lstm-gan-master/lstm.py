@@ -1,4 +1,4 @@
-% pylab inline
+#% pylab inline
 import glob
 import numpy as np
 import pandas as pd
@@ -10,7 +10,38 @@ from keras.layers import Dropout
 from keras.layers import CuDNNLSTM, LSTM, Bidirectional
 from keras.layers import Activation
 from keras.utils import np_utils
-from keras.callbacks import ModelCheckpoint, History
+from keras.callbacks import ModelCheckpoint, History, Callback
+import matplotlib.pyplot as plt
+import time
+
+class ModelCheckpoint_GenerateData(Callback):
+    """Generate data with model every given time period
+    """
+
+    def __init__(self, filepath, notes, network_input, period=1, verbose=True):
+        super(ModelCheckpoint_GenerateData, self).__init__()
+        self.filepath = filepath
+        self.period = period
+        self.epochs_since_last_save = 0
+        self.verbose = verbose
+        # Data needed for data generation
+        self.notes = notes
+        self.network_input = network_input
+    
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        self.epochs_since_last_save += 1
+        if self.epochs_since_last_save >= self.period:
+            self.epochs_since_last_save = 0
+            filepath = self.filepath.format(epoch=epoch+1, **logs)
+            # Do something with the model
+            prediction_output = generate_notes(self.model, self.notes, self.network_input, len(set(self.notes)))
+            #create_midi(prediction_output, 'pokemon_midi')
+            #file_name = './midi_bts_4_lstm_output/bts_' + str(n_epochs)
+            create_midi(prediction_output, filepath)
+            if self.verbose > 0:
+                 print('\nEpoch %05d: saving data to %s' % (epoch + 1, filepath))
+
 
 def train_network():
     """ Train a Neural Network to generate music """
@@ -28,25 +59,35 @@ def train_network():
     history = History()
     
     # Fit the model
-    n_epochs = 2
+    n_epochs = 50
+
+    mc = ModelCheckpoint('./midi_bts_4_lstm_output/LSTMmodel_{epoch:08d}.h5', 
+                                     save_weights_only=True, period=5)
+    mc_gd = ModelCheckpoint_GenerateData('./midi_bts_4_lstm_output/bts_4_lstm_{epoch:08d}', \
+        period=5,verbose=True, notes=notes, network_input=network_input)
+
     model.summary()
-    model.fit(network_input, network_output, callbacks=[history], epochs=n_epochs, batch_size=64)
-    model.save('LSTMmodel.h5')
+    model.fit(network_input, network_output, epochs=n_epochs, batch_size=64, callbacks=[history,mc, mc_gd])
+    model.save('./midi_bts_4_lstm_output/LSTMmodel.h5')
     
     # Use the model to generate a midi
     prediction_output = generate_notes(model, notes, network_input, len(set(notes)))
-    create_midi(prediction_output, 'pokemon_midi')
+    #create_midi(prediction_output, 'pokemon_midi')
+    file_name = './midi_bts_4_lstm_output/bts_' + str(n_epochs)
+    create_midi(prediction_output, file_name)
     
     # Plot the model losses
     pd.DataFrame(history.history).plot()
-    plt.savefig('LSTM_Loss_per_Epoch.png', transparent=True)
+    #plt.savefig('LSTM_Loss_per_Epoch.png', transparent=True)
+    plt.savefig('./midi_bts_4_lstm_output/LSTM_Loss_per_Epoch.png')
     plt.close()
     
 def get_notes():
     """ Get all the notes and chords from the midi files """
     notes = []
 
-    for file in glob.glob("Pokemon MIDIs/*.mid"):
+    #for file in glob.glob("Pokemon MIDIs/*.mid"):
+    for file in glob.glob("midi_bts_4/*.mid"):
         midi = converter.parse(file)
 
         print("Parsing %s" % file)
@@ -174,4 +215,7 @@ def create_midi(prediction_output, filename):
     midi_stream.write('midi', fp='{}.mid'.format(filename))
     
 if __name__ == '__main__':
+    start_time = time.time()
     train_network()
+    end_time = time.time()
+    print("Total time elapsed: {}".format(end_time - start_time))
