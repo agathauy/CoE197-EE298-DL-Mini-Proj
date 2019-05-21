@@ -18,7 +18,7 @@ def get_notes():
     notes = []
     i = 0
     #for file in glob.glob("Pokemon MIDIs/*.mid"):
-    for file in glob.glob("midi_bts_2/*.mid"):
+    for file in glob.glob("midi_bts_4/*.mid"):
         midi = converter.parse(file)
         i = i + 1
         if i > 5: break
@@ -251,7 +251,7 @@ class GAN():
             if (epoch + 1) % save_interval == 0:
 
                 # Save the generator model in a periodic basis
-                model_name = './midi_bts_3/bts_' + str(epoch)
+                model_name = './midi_bts_4/bts_' + str(epoch)
                 self.generator.save(model_name + ".h5")
 
                 # Generate a midi file in a periodic basis
@@ -289,9 +289,9 @@ class GAN():
         for i, x in enumerate(predictions[0]):
             entry = 0
             if x < 0:
-                entry = (x+1)*44
+                entry = (x+1)*21
             else:
-                entry = (x*44) + 45
+                entry = (x*21) + 21
             pred_notes.append(entry)
         #pred_notes = [int((x+1)*89) for x in predictions[0]]
         #pred_notes = [x*242+242 for x in predictions[0]]
@@ -300,7 +300,7 @@ class GAN():
         pred_notes = [int_to_note[int(x)] for x in pred_notes]
         
 
-        file_name = './midi_bts_3_output/bts_' + str(epoch)
+        file_name = './midi_bts_4_output/bts_' + str(epoch)
         create_midi(pred_notes, file_name)
         time_end = time.time()
         print('[generate midi]: Ended. Time elapsed: {}'.format(time_end - time_start))
@@ -313,7 +313,7 @@ class GAN():
         plt.legend(['Discriminator', 'Generator'])
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
-        plt.savefig('./midi_bts_3_output/GAN_Loss_per_Epoch_final.png', transparent=True)
+        plt.savefig('./midi_bts_4_output/GAN_Loss_per_Epoch_final.png', transparent=True)
         plt.close()
 
 if __name__ == '__main__':
