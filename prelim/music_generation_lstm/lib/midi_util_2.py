@@ -56,13 +56,11 @@ def midi_to_array_one_hot(mid, quantization):
     # Quantize the notes to a grid of time steps.
     mid = quantize(mid, quantization=quantization)
 
-    # print('here1')
     # Convert the note timing and velocity to an array.
     _, track = get_note_track(mid)
     ticks_per_quarter = mid.ticks_per_beat
     time_msgs = [msg for msg in track if hasattr(msg, 'time')]
     cum_times = np.cumsum([msg.time for msg in time_msgs])
-    # print('here2')
 
     track_len_ticks = cum_times[-1]
     if DEBUG:
@@ -71,28 +69,21 @@ def midi_to_array_one_hot(mid, quantization):
         (time * (2**quantization/4) / (ticks_per_quarter), msg.type, msg.note, msg.velocity)
         for (time, msg) in zip(cum_times, time_msgs)
         if msg.type == 'note_on' or msg.type == 'note_off']
-    # print('here3')
 
     num_steps = int(round(track_len_ticks / float(ticks_per_quarter)*2**quantization/4))
     normalized_num_steps = nearest_pow2(num_steps)
     notes.sort(key=lambda position_note_type_note_num_velocity:(position_note_type_note_num_velocity[0],-position_note_type_note_num_velocity[3]))
-    # print('here4')
 
     if DEBUG:
-        pp = pprint.PrettyPrinter()
+        # pp = pprint.PrettyPrinter()
         print(num_steps)
         print(normalized_num_steps)
-        pp.pprint(notes)
+        # pp.pprint(notes)
 
     midi_array = np.zeros((normalized_num_steps, len(PITCHES)*2))
     velocity_array = np.zeros((normalized_num_steps, len(PITCHES)))
     open_msgs = defaultdict(list)
-    # print('here5')
 
-
-    # print(notes[0:5])
-
-    # print("here before for loop in notes")
     for (position, note_type, note_num, velocity) in notes:
         if position == normalized_num_steps:
             # print 'Warning: truncating from position {} to {}'.format(position, normalized_num_steps - 1)
@@ -104,17 +95,10 @@ def midi_to_array_one_hot(mid, quantization):
             continue
 
         if note_type == "note_on" and velocity > 0:
-            # print("here in note on and velocity > 0")
-            # print(note_num)
-            # print(open_msgs)
             open_msgs[note_num].append((position, note_type, note_num, velocity))
-            # print(note_num)
-            # print(PITCHES_MAP)
-            # print( 2*PITCHES_MAP[note_num])
-            # print(position)
-            midi_array[int(position), int(2*PITCHES_MAP[note_num])] = 1
-            midi_array[int(position), int(2*PITCHES_MAP[note_num]+1)] = 1
-            velocity_array[int(position), PITCHES_MAP[note_num]] = velocity
+            midi_array[position, 2*PITCHES_MAP[note_num]] = 1
+            midi_array[position, 2*PITCHES_MAP[note_num]+1] = 1
+            velocity_array[position, PITCHES_MAP[note_num]] = velocity
         elif note_type == 'note_off' or (note_type == 'note_on' and velocity == 0):
 
             note_on_open_msgs = open_msgs[note_num]
@@ -128,9 +112,9 @@ def midi_to_array_one_hot(mid, quantization):
             current_pos = position
             while current_pos > stack_pos:
                 # if midi_array[position, PITCHES_MAP[note_num]] != 1:
-                midi_array[int(current_pos), int(2*PITCHES_MAP[note_num])] = 0
-                midi_array[int(current_pos), int(2*PITCHES_MAP[note_num]+1)] = 1
-                velocity_array[int(current_pos), PITCHES_MAP[note_num]] = vel
+                midi_array[current_pos, 2*PITCHES_MAP[note_num]] = 0
+                midi_array[current_pos, 2*PITCHES_MAP[note_num]+1] = 1
+                velocity_array[current_pos, PITCHES_MAP[note_num]] = vel
                 current_pos -= 1
 
     for (position, note_type, note_num, velocity) in notes:
@@ -144,9 +128,9 @@ def midi_to_array_one_hot(mid, quantization):
             continue
         if note_type == "note_on" and velocity > 0:
             open_msgs[note_num].append((position, note_type, note_num, velocity))
-            midi_array[int(position), int(2*PITCHES_MAP[note_num])] = 1
-            midi_array[int(position), int(2*PITCHES_MAP[note_num]+1)] = 1
-            velocity_array[int(position), PITCHES_MAP[note_num]] = velocity
+            midi_array[position, 2*PITCHES_MAP[note_num]] = 1
+            midi_array[position, 2*PITCHES_MAP[note_num]+1] = 1
+            velocity_array[position, PITCHES_MAP[note_num]] = velocity
 
     assert len(midi_array) == len(velocity_array)
     return midi_array, velocity_array
@@ -512,22 +496,15 @@ def stylify_track(mid, velocity_array, quantization):
         if hasattr(time_msg, 'time'):
             if time_msg.type == 'note_on' or time_msg.type == 'note_off':
                 if time_msg.velocity > 0:
-                    #print('here in greter than time_msg.velocity >0')
                     pos = cum_times[cum_index] * (2**quantization/4) / (ticks_per_quarter)
-                    #print(pos)
-                    if int(pos) == normalized_num_steps:
+                    if pos == normalized_num_steps:
                         pos = pos - 1
                     if pos > normalized_num_steps:
                         continue
-                    vel = velocity_array[int(pos), PITCHES_MAP[time_msg.note]]
-                    print(vel)
-
+                    vel = velocity_array[pos, PITCHES_MAP[time_msg.note]]
                     vel = vel*127
                     # print vel
-                    #print(vel)
                     vel = max(vel,1)
-                    #print(vel)
-                    #print('here before')
                     track[i].velocity = int(round(vel))
             cum_index += 1
 

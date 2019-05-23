@@ -496,7 +496,7 @@ def stylify_track(mid, velocity_array, quantization):
         if hasattr(time_msg, 'time'):
             if time_msg.type == 'note_on' or time_msg.type == 'note_off':
                 if time_msg.velocity > 0:
-                    pos = cum_times[cum_index] * (2**quantization/4) / (ticks_per_quarter)
+                    pos = int(cum_times[cum_index] * (2**quantization/4) / (ticks_per_quarter))
                     if pos == normalized_num_steps:
                         pos = pos - 1
                     if pos > normalized_num_steps:

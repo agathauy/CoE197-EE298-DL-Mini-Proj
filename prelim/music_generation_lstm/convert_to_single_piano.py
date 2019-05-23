@@ -45,9 +45,10 @@ for i , filename in enumerate(os.listdir(mid_path)):
         else:
             print('\tNo time signature. Skipping ...')
             continue
-        
+
+
         mid_q = quantize(mid, 4)
-        
+
         if not mid_q:
             print('Invalid MIDI. Skipping...')
             continue

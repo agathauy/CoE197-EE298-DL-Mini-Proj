@@ -512,15 +512,22 @@ def stylify_track(mid, velocity_array, quantization):
         if hasattr(time_msg, 'time'):
             if time_msg.type == 'note_on' or time_msg.type == 'note_off':
                 if time_msg.velocity > 0:
+                    #print('here in greter than time_msg.velocity >0')
                     pos = cum_times[cum_index] * (2**quantization/4) / (ticks_per_quarter)
-                    if pos == normalized_num_steps:
+                    #print(pos)
+                    if int(pos) == normalized_num_steps:
                         pos = pos - 1
                     if pos > normalized_num_steps:
                         continue
-                    vel = velocity_array[pos, PITCHES_MAP[time_msg.note]]
+                    vel = velocity_array[int(pos), PITCHES_MAP[time_msg.note]]
+                    print(vel)
+
                     vel = vel*127
                     # print vel
+                    #print(vel)
                     vel = max(vel,1)
+                    #print(vel)
+                    #print('here before')
                     track[i].velocity = int(round(vel))
             cum_index += 1
 
