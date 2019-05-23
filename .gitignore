@@ -2,3 +2,5 @@
 */.ipynb_checkpoints/*
 data/nsynth*
 \.DS_Store
+*.pyc
+*.h5

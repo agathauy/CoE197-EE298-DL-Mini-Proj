@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+pyenv activate bachbot
+source ~/torch/install/bin/torch-activate

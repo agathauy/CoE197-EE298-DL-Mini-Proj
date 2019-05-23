@@ -59,7 +59,7 @@ def train_network():
     history = History()
     
     # Fit the model
-    n_epochs = 50
+    n_epochs = 100
 
     mc = ModelCheckpoint('./midi_bts_6_lstm_output/LSTMmodel_{epoch:08d}.h5', 
                                      save_weights_only=True, period=5)
