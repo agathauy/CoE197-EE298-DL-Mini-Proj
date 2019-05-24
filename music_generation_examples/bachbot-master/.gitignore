@@ -1,0 +1,11 @@
+.ipynb_checkpoints/
+venv/
+scratch/
+logs/
+out/
+*.pyc
+*.egg-info/
+tags
+out
+result/
+*.jugdata/
