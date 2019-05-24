@@ -9,8 +9,8 @@ from random import shuffle
 
 #mid_path = '/Users/Iman/Desktop/jazz'
 #out_path = '/Users/Iman/Desktop/jazz_out'
-mid_path = './old_games/midi_type_0/trial1'
-out_path = './old_games/single_piano/midi_bts'
+mid_path = './older_games/jazz/'
+out_path = './older_games/converted_1/'
 
 
 if not os.path.exists(out_path):
