@@ -32,9 +32,9 @@ Setting Input and Output Folder
 # OUTPUT_FOLDER = 'output/Golden_Sun_2_v0'
 # OUTPUT_FOLDER = 'output/Bach_wv1041a'
 
-
-INPUT_FOLDER = './data/preprocessed/single_piano/midi_bts_boy_with_luv'
-OUTPUT_FOLDER = './output/single_piano/midi_bts_boy_with_luv_lstm_single_instrument_v0'
+INPUT_FOLDER = './data/raw/Bach_Prelude_and_Fugue_in_C_major_BWV_846'
+#INPUT_FOLDER = './data/preprocessed/single_piano/midi_bts_boy_with_luv'
+OUTPUT_FOLDER = './output/lstm_single_instrument_v0/Bach_Prelude_and_Fugue_in_C_major_BWV_846'
 
 
 # INPUT_FOLDER = './input/midi_bts_single_boy_with_luv'
@@ -78,8 +78,11 @@ class ModelCheckpoint_GenerateData(Callback):
             self.epochs_since_last_save = 0
             filepath = self.filepath.format(epoch=epoch+1, **logs)
             # Do something with the model
+            start_time = time.time()
             prediction_output, random_seed = generate_notes(self.model, self.notes, self.network_input, len(set(self.notes)))
             create_midi(prediction_output, filepath)
+            end_time = time.time()
+            print("CREATING MIDI TOTAL TIME: {}".format(end_time-start_time))
             if self.verbose > 0:
                  print('\nEpoch %05d: saving data to %s' % (epoch + 1, filepath))
 
@@ -158,18 +161,6 @@ LSTM Network Structure
 
 def create_network(network_input, n_vocab):
     """ create the structure of the neural network """
-    # model = Sequential()
-    # model.add(CuDNNLSTM(512,input_shape=(network_input.shape[1], network_input.shape[2]),return_sequences=True))
-    # model.add(Dropout(0.3))
-    # model.add(Bidirectional(CuDNNLSTM(512, return_sequences=True)))
-    # model.add(Dropout(0.3))
-    # model.add(Bidirectional(CuDNNLSTM(512)))
-    # model.add(Dense(256))
-    # model.add(Dropout(0.3))
-    # model.add(Dense(n_vocab))
-    # model.add(Activation('softmax'))
-    # model.compile(loss='categorical_crossentropy', optimizer='adam')
-
 
     model = Sequential()
     model.add(LSTM(256, input_shape=(network_input.shape[1], network_input.shape[2]), return_sequences=True))
@@ -210,20 +201,26 @@ def train_network(n_epochs=50):
 
 
     mc = ModelCheckpoint('./' + OUTPUT_FOLDER + '/LSTMmodel_{epoch:08d}.h5', 
-                                     save_weights_only=True, period=5)
+                                     save_weights_only=True, period=10)
     mc_gd = ModelCheckpoint_GenerateData('./' + OUTPUT_FOLDER + '/out_{epoch:08d}', \
-        period=5,verbose=True, notes=notes, network_input=network_input)
+        period=10,verbose=True, notes=notes, network_input=network_input)
+    
+    try:
+        model.summary()
 
-    model.summary()
-    sys.exit()
-    model.fit(network_input, network_output, epochs=n_epochs, batch_size=64, callbacks=[history,mc, mc_gd])
-    model.save('./' + OUTPUT_FOLDER + '/LSTMmodel.h5')
+        model.fit(network_input, network_output, epochs=n_epochs, batch_size=64, callbacks=[history,mc, mc_gd])
+        model.save('./' + OUTPUT_FOLDER + '/LSTMmodel.h5')
 
-    # Use the model to generate a midi
-    prediction_output, random_seed = generate_notes(model, notes, network_input, len(set(notes)))
-    #create_midi(prediction_output, 'pokemon_midi')
-    file_name = './' + OUTPUT_FOLDER + '/out_' + str(n_epochs)
-    create_midi(prediction_output, file_name)
+        # Use the model to generate a midi
+        prediction_output, random_seed = generate_notes(model, notes, network_input, len(set(notes)))
+        #create_midi(prediction_output, 'pokemon_midi')
+        file_name = './' + OUTPUT_FOLDER + '/out_' + str(n_epochs)
+        create_midi(prediction_output, file_name)
+    except KeyboardInterrupt:
+        print("Keyboard Interrupt")
+    except Exception as e:
+        print(e)
+        print("error in train_network")
 
     # Plot the model losses
     pd.DataFrame(history.history).plot()
@@ -323,7 +320,6 @@ def generate_given_model_path(file_path, random_seed=None):
 
     # Use the model to generate a midi
     prediction_output, rs = generate_notes(model, notes, network_input, len(set(notes)), random_seed)
-    #create_midi(prediction_output, 'pokemon_midi')
     file_name = './' + OUTPUT_FOLDER + '/out_rand_' + str(rs)
     create_midi(prediction_output, file_name)
 
@@ -341,7 +337,7 @@ Main
 
 if __name__ == "__main__":
     start_time = time.time()
-    train_network(100)
+    train_network(150)
     end_time = time.time()
     print("Total time elapsed: {}".format(end_time - start_time))
 

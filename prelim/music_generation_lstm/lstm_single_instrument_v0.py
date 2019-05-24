@@ -32,9 +32,9 @@ Setting Input and Output Folder
 # OUTPUT_FOLDER = 'output/Golden_Sun_2_v0'
 # OUTPUT_FOLDER = 'output/Bach_wv1041a'
 
-
-INPUT_FOLDER = './data/preprocessed/single_piano/midi_bts_boy_with_luv'
-OUTPUT_FOLDER = './output/single_piano/midi_bts_boy_with_luv_lstm_single_instrument_v0'
+INPUT_FOLDER = './data/raw/Bach_Prelude_and_Fugue_in_C_major_BWV_846'
+#INPUT_FOLDER = './data/preprocessed/single_piano/midi_bts_boy_with_luv'
+OUTPUT_FOLDER = './output/lstm_single_instrument_v0/Bach_Prelude_and_Fugue_in_C_major_BWV_846'
 
 
 # INPUT_FOLDER = './input/midi_bts_single_boy_with_luv'
