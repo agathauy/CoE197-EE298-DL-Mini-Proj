@@ -44,3 +44,6 @@ Epoch 41/500
 Total time elapsed: 445.67898631095886
 (ee298z) agatha@a-pc:~/Documents/EE298z/miniproj-2/prelim/music_generation_lstm$ 
 
+
+## lstm_single_instrument_6
+- based on v0 with argparse for input folder, output folder, and the number of epochs
