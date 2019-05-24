@@ -7,20 +7,16 @@ from lib.midi_util import quantize
 from mido import MidiFile
 from random import shuffle
 
-
-
 #mid_path = '/Users/Iman/Desktop/jazz'
 #out_path = '/Users/Iman/Desktop/jazz_out'
-mid_path = './data/preprocessed/midi_type_0/midi_bts'
-out_path = './data/preprocessed/single_piano/midi_bts'
+mid_path = './old_games/midi_type_0/trial1'
+out_path = './old_games/single_piano/midi_bts'
 
 
 if not os.path.exists(out_path):
     os.makedirs(out_path)
 
 total = len(os.listdir(mid_path))
-
-
 
 
 for i , filename in enumerate(os.listdir(mid_path)):

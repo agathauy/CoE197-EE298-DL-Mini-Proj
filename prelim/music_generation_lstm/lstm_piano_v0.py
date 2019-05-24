@@ -49,7 +49,9 @@ from random import shuffle
 # The MIDI pitches we use.
 PITCHES = range(21,109,1)
 OFFSET = 109-21
-PITCHES_MAP = { p : i for i, p in enumerate(PITCHES) }
+
+# The reverse of what is in encoding
+PITCHES_MAP = { i : p for i, p in enumerate(PITCHES) }
 print(len(PITCHES))
 
 """
@@ -115,8 +117,15 @@ class ModelCheckpoint_GenerateData(Callback):
             self.epochs_since_last_save = 0
             filepath = self.filepath.format(epoch=epoch+1, **logs)
             # Do something with the model
-            prediction_output, random_seed = generate_notes(self.model, self.notes, self.network_input, len(set(self.notes)))
-            create_midi(prediction_output, filepath)
+            length_notes =  np.unique(self.notes, axis=0).shape[0]
+            #print('length_notes: ')
+            #print(length_notes)
+            #sys.exit()
+            prediction_output, random_seed = generate_notes(self.model, self.notes, self.network_input, length_notes)
+            #print('prediction_output')
+            #print(prediction_output)
+            #sys.exit()
+            create_midi(prediction_output, filepath, self.notes)
             if self.verbose > 0:
                  print('\nEpoch %05d: saving data to %s' % (epoch + 1, filepath))
 
@@ -170,23 +179,48 @@ def get_notes_and_velocities():
 def prepare_sequences(notes, n_vocab):
     """ Prepare the sequences used by the Neural Network """
     sequence_length = 100
+    #print(len(notes))
+    #print(notes.shape)
+    #print(notes[0])
 
+    n = np.unique(notes, axis=0)
+    #print(n[0])
+    #print(n.shape)
+    pitchnames = n.tolist()
+    #print(len(n))
+    #print(len(pitchnames))
+    #print(pitchnames[0:5])
+    #print(notes.shape)
+    temp_notes = notes.tolist()
     # get all pitch names
-    pitchnames = sorted(set(item for item in notes))
+    #pitchnames = sorted(set(item for item in notes))
 
-     # create a dictionary to map pitches to integers
-    note_to_int = dict((note, number) for number, note in enumerate(pitchnames))
-    print(note_to_int)
+    # create a dictionary to map pitches to integers
+    #Counter(str(e) for e in li)
+
+    note_to_int = dict((str(note), number) for number, note in enumerate(pitchnames))
+    #print("len(note_to_int)")
+    #print(len(note_to_int))
+    #print(note_to_int[0])
+    #print(note_to_int)
     network_input = []
     network_output = []
 
     # create input sequences and the corresponding outputs
-    for i in range(0, len(notes) - sequence_length, 1):
-        sequence_in = notes[i:i + sequence_length]
-        sequence_out = notes[i + sequence_length]
-        network_input.append([note_to_int[char] for char in sequence_in])
-        network_output.append(note_to_int[sequence_out])
+    for i in range(0, len(temp_notes) - sequence_length, 1):
+        sequence_in = temp_notes[i:i + sequence_length]
+        sequence_out = temp_notes[i + sequence_length]
+        network_input.append([note_to_int[str(char)] for char in sequence_in])
+        #print(network_input[i])
+        #print(len(network_input))
+        network_output.append(note_to_int[str(sequence_out)])
+        #network_output.append(note_to_int[[str(x) for x in sequence_out]])
+        #print(network_output[i])
+        #print(len(network_output))
 
+    #print(network_input[0])
+    #print(network_output[0])
+    #sys.exit()
     # reshape the input into a format compatible with LSTM layers
     n_patterns = len(network_input)
     network_input = np.reshape(network_input, (n_patterns, sequence_length, 1))
@@ -245,7 +279,7 @@ def train_network(n_epochs=50):
     print(v.shape)
 
     n_vocab = n.shape[0]
-    notes = notes.tolist()
+    #notes = notes.tolist()
     #print(notes.tolist()[0])
     #sys.exit()
 
@@ -267,10 +301,10 @@ def train_network(n_epochs=50):
     model.save('./' + OUTPUT_FOLDER + '/LSTMmodel.h5')
 
     # Use the model to generate a midi
-    prediction_output, random_seed = generate_notes(model, notes, network_input, len(set(notes)))
+    prediction_output, random_seed = generate_notes(model, notes, network_input, len(n_vocab))
     #create_midi(prediction_output, 'pokemon_midi')
     file_name = './' + OUTPUT_FOLDER + '/out_' + str(n_epochs)
-    create_midi(prediction_output, file_name)
+    create_midi(prediction_output, file_name, notes)
 
     # Plot the model losses
     pd.DataFrame(history.history).plot()
@@ -288,74 +322,153 @@ Generation of prediction to MIDI
 """
 
 def generate_notes(model, notes, network_input, n_vocab, random_seed=None):
-    """ Generate notes from the neural network based on a sequence of notes """
+    """
+        Generate notes from the neural network based on a sequence of notes 
+
+        prediction_output will be a series of embeddings of format [0, 0, 0, 1, 1 ...] etc
+
+        Need to convert these time slices back
+
+
+    """
     # pick a random sequence from the input as a starting point for the prediction
-    pitchnames = sorted(set(item for item in notes))
+    #pitchnames = sorted(set(item for item in notes))
+    #PITCHES_MAP
 
     np.random.seed(random_seed)
+
+
+    n = np.unique(notes, axis=0)
+    #print(n[0])
+    #print(n.shape)
+    pitchnames = n.tolist()
 
     start = np.random.randint(0, len(network_input)-1)
 
     int_to_note = dict((number, note) for number, note in enumerate(pitchnames))
 
     pattern = network_input[start]
+    print("Starting pattern: ")
+    #print(pattern)
+    #print(start)
     prediction_output = []
 
-    # generate 500 notes
-    for note_index in range(500):
+    # generate 2048 notes
+    for note_index in range(2048):
         prediction_input = np.reshape(pattern, (1, len(pattern), 1))
+        ##print(prediction_input.shape)
+        #print(prediction_input)
         prediction_input = prediction_input / float(n_vocab)
 
         prediction = model.predict(prediction_input, verbose=0)
-
+        #print("model's prediction")
+        #print(prediction)
         index = np.argmax(prediction)
+        print("max index: ")
+        print(index)
         result = int_to_note[index]
+        #print("int to note result: ")
+        #print(result)
         prediction_output.append(result)
 
         pattern = np.append(pattern,index)
         pattern = pattern[1:len(pattern)]
 
+        # if note_index > 10:
+        #     sys.exit()
+
     return (prediction_output, random_seed)
 
-def create_midi(prediction_output, filename):
+def create_midi(prediction_output, filename, notes):
     """ convert the output from the prediction to notes and create a midi file
         from the notes """
     offset = 0
     output_notes = []
-
+    print("here in create_midi")
+    piano_c_chord = pretty_midi.PrettyMIDI()
+    piano = pretty_midi.Instrument(program=0, name='Piano')
     # create note and chord objects based on the values generated by the model
-    for pattern in prediction_output:
-        # pattern is a chord
-        if ('.' in pattern) or pattern.isdigit():
-            notes_in_chord = pattern.split('.')
-            notes = []
-            for current_note in notes_in_chord:
-                new_note = note.Note(int(current_note))
-                new_note.storedInstrument = instrument.Piano()
-                notes.append(new_note)
-            new_chord = chord.Chord(notes)
-            new_chord.offset = offset
-            output_notes.append(new_chord)
-        # pattern is a note
-        else:
-            new_note = note.Note(pattern)
-            new_note.offset = offset
-            new_note.storedInstrument = instrument.Piano()
-            output_notes.append(new_note)
-        # increase offset each iteration so that notes do not stack
-        offset += 0.5
+    max_len = len(prediction_output)
+    print("max_len")
+    print(max_len)
 
-    midi_stream = stream.Stream(output_notes)
-    midi_stream.write('midi', fp='{}.mid'.format(filename))
+    on_list = []
+    init = 0
+    offset = 0
+    for i, pattern in enumerate(prediction_output):
+        #print(pattern)
+        # note on [1,1]
+        # note sustained [0, 1]
+        # note off [0, 0]
+        arr_pattern = np.array(pattern)
+        #print(arr_pattern)
+        indices = np.where(arr_pattern == 1)[0]
+        #print(indices)
+        indices = indices.tolist()
+
+        # check all ones
+
+        for _, pos in enumerate(indices):
+
+            # Check for new notes
+            # Check if note is on
+            if pos % 0:
+                on_list.append([pos, i])
+            else:
+                # odd number position
+                # check for sustain/consider as new note if it appears
+                if init == 1:
+                    for j, on in enumerate(on_list):
+                        if on[0] == (pos - 1):
+                            on_list[j, 0] = on_list[j, 1] + 1 # add another tick to the sustain
+                            break
+            init = 1
+
+        # Check if anything from the on_list is now off
+        for _, on in enumerate(on_list):
+            if (on[0] not in indices):
+                # check if not sustain
+                if ((on[0] + 1) not in indices):
+                    # Remove the note and add to midi file
+                    # constant velocity for now
+                    start_tick = on[1]
+                    end_tick = i
+                    #total_ticks = end_tick - start_tick
+                    start_time = start_tick * 0.5
+                    end_time = end_tick * 0.5
+                    print("Appending note: {}".format(PITCHES_MAP[int(on[0]/2)]))
+                    note = pretty_midi.Note(velocity=90, pitch=PITCHES_MAP[int(on[0]/2)], start=start_time, end=end_time)
+                    # add it to our piano 
+                    piano.notes.append(note)
+
+
+                    # remove the note
+                    on_list.remove(on)
+
+
+    # Add the piano instrument to the PrettyMIDI object
+    piano_c_chord.instruments.append(piano)
+    
+    # Write out the MIDI data
+    midi_name = filename + '.mid'
+    piano_c_chord.write(midi_name)
+
+    # midi_stream = stream.Stream(output_notes)
+    # midi_stream.write('midi', fp='{}.mid'.format(filename))
 
 def generate_given_model_path(file_path, random_seed=None):
     """ Generate a song given the file path to the model 
         and an optional random seed """
 
-    notes = get_notes_and_velocities()
+    notes, velocities = get_notes_and_velocities()
 
-    # Get the number of pitch names
-    n_vocab = len(set(notes))
+
+    n = np.unique(notes, axis=0)
+    print(n.shape)
+    v = np.unique(velocities, axis=0)
+    print(v.shape)
+
+    n_vocab = n.shape[0]
 
     # Convert notes into numerical input
     network_input, network_output = prepare_sequences(notes, n_vocab)
@@ -366,12 +479,12 @@ def generate_given_model_path(file_path, random_seed=None):
 
 
     # Use the model to generate a midi
-    prediction_output, rs = generate_notes(model, notes, network_input, len(set(notes)), random_seed)
+    prediction_output, rs = generate_notes(model, notes, network_input, n_vocab, random_seed)
     #create_midi(prediction_output, 'pokemon_midi')
     file_name = './' + OUTPUT_FOLDER + '/out_rand_' + str(rs)
-    create_midi(prediction_output, file_name)
+    create_midi(prediction_output, file_name, notes)
 
-    return output_path
+    return file_name
 
 
 
@@ -385,7 +498,7 @@ Main
 
 if __name__ == "__main__":
     start_time = time.time()
-    train_network(100)
+    train_network(500)
     end_time = time.time()
     print("Total time elapsed: {}".format(end_time - start_time))
 
