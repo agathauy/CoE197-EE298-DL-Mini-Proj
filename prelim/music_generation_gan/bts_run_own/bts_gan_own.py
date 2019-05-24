@@ -132,6 +132,197 @@ def create_midi(prediction_output, filename):
     midi_stream = stream.Stream(output_notes)
     midi_stream.write('midi', fp='{}.mid'.format(filename))
 
+class GAN():
+    def __init__(self, rows):
+        self.seq_length = rows
+        self.seq_shape = (self.seq_length, 1)
+        self.latent_dim = 1000
+        self.disc_loss = []
+        self.gen_loss =[]
+        
+        optimizer = Adam(0.0002, 0.5)
+
+        # Build and compile the discriminator
+        self.discriminator = self.build_discriminator()
+        self.discriminator.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+
+        # Build the generator
+        self.generator = self.build_generator()
+
+        # The generator takes noise as input and generates note sequences
+        z = Input(shape=(self.latent_dim,))
+        generated_seq = self.generator(z)
+
+        # For the combined model we will only train the generator
+        self.discriminator.trainable = False
+
+        # The discriminator takes generated images as input and determines validity
+        validity = self.discriminator(generated_seq)
+
+        # The combined model  (stacked generator and discriminator)
+        # Trains the generator to fool the discriminator
+        self.combined = Model(z, validity)
+        self.combined.compile(loss='binary_crossentropy', optimizer=optimizer)
+
+    def build_discriminator(self):
+
+        model = Sequential()
+        model.add(CuDNNLSTM(512, input_shape=self.seq_shape, return_sequences=True))
+        model.add(Bidirectional(CuDNNLSTM(512)))
+        model.add(Dense(512))
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(Dense(256))
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(Dense(1, activation='sigmoid'))
+        model.summary()
+
+        seq = Input(shape=self.seq_shape)
+        validity = model(seq)
+
+        return Model(seq, validity)
+      
+    def build_generator(self):
+
+        model = Sequential()
+        model.add(Dense(256, input_dim=self.latent_dim))
+        model.add(Activation('relu'))
+        model.add(BatchNormalization())
+        model.add(Dense(512))
+        model.add(Activation('relu'))
+        model.add(BatchNormalization())
+        model.add(Dense(1024))
+        model.add(Activation('relu'))
+        model.add(BatchNormalization())
+        model.add(Dense(np.prod(self.seq_shape), activation='relu'))
+        model.add(Reshape(self.seq_shape))
+        model.summary()
+        
+        noise = Input(shape=(self.latent_dim,))
+        seq = model(noise)
+
+        return Model(noise, seq)
+
+    def train(self, epochs, batch_size=128, sample_interval=50):
+
+        print('[train]: Starting...')
+        time_start = time.time()
+        # Load and convert the data
+        notes = get_notes()
+        n_vocab = len(set(notes))
+        X_train, y_train = prepare_sequences(notes, n_vocab)
+
+        # Adversarial ground truths
+        real = np.ones((batch_size, 1))
+        fake = np.zeros((batch_size, 1))
+        
+        # Insert saving; The generator image is saved every 500 steps
+        save_interval = 500
+
+        # Training the model
+        for epoch in range(epochs):
+
+            # Training the discriminator
+            # Select a random batch of note sequences
+            idx = np.random.randint(0, X_train.shape[0], batch_size)
+            real_seqs = X_train[idx]
+
+            #noise = np.random.choice(range(484), (batch_size, self.latent_dim))
+            #noise = (noise-242)/242
+            noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
+
+            # Generate a batch of new note sequences
+            gen_seqs = self.generator.predict(noise)
+
+            # Train the discriminator
+            d_loss_real = self.discriminator.train_on_batch(real_seqs, real)
+            d_loss_fake = self.discriminator.train_on_batch(gen_seqs, fake)
+            d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
+
+
+            #  Training the Generator
+            noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
+
+            # Train the generator (to have the discriminator label samples as real)
+            g_loss = self.combined.train_on_batch(noise, real)
+
+
+
+            if (epoch + 1) % save_interval == 0:
+
+                # Save the generator model in a periodic basis
+                model_name = './bts_models/bts_' + str(epoch)
+                self.generator.save(model_name + ".h5")
+
+                # Generate a midi file in a periodic basis
+                self.generate(notes, epoch)
+
+
+            # Print the progress and save into loss lists
+            if epoch % sample_interval == 0:
+              print ("%d [D loss: %f, acc.: %.2f%%] [G loss: %f] [time: %f]" % (epoch, d_loss[0], 100*d_loss[1], g_loss, time.time() - time_start))
+              self.disc_loss.append(d_loss[0])
+              self.gen_loss.append(g_loss)
+        
+        self.generate(notes, epoch)
+        self.plot_loss()
+
+
+        time_end = time.time()
+        print('[train]: Ended. Time elapsed: {}'.format(time_end - time_start))
+        
+    def generate(self, input_notes, epoch):
+        # Get pitch names and store in a dictionary
+        print('[generate midi]: Starting...')
+        time_start = time.time()
+        notes = input_notes
+        pitchnames = sorted(set(item for item in notes))
+        #print(pitchnames)
+        #print(len(pitchnames))
+        int_to_note = dict((number, note) for number, note in enumerate(pitchnames))
+        #print(len(int_to_note))
+        # Use random noise to generate sequences
+        noise = np.random.normal(0, 1, (1, self.latent_dim))
+        predictions = self.generator.predict(noise)
+        #print(predictions[0])
+        pred_notes = []
+
+
+        old_max = 1
+        old_min = -1
+        new_max = 41
+        new_min = 0
+        old_range = old_max - old_min
+        new_range = new_max - new_min
+        for i, x in enumerate(predictions[0]):
+            entry = (((x - old_min)* new_range)/old_range) + new_min
+            # if x < 0:
+            #     entry = (x+1)*21
+            # else:
+            #     entry = (x*21) + 21
+            pred_notes.append(entry)
+        #pred_notes = [int((x+1)*89) for x in predictions[0]]
+        #pred_notes = [x*242+242 for x in predictions[0]]
+        #print(len(int_to_note))
+        #print(pred_notes)
+        pred_notes = [int_to_note[int(x)] for x in pred_notes]
+        
+
+        file_name = './bts_output/bts_' + str(epoch)
+        create_midi(pred_notes, file_name)
+        time_end = time.time()
+        print('[generate midi]: Ended. Time elapsed: {}'.format(time_end - time_start))
+
+        
+    def plot_loss(self):
+        plt.plot(self.disc_loss, c='red')
+        plt.plot(self.gen_loss, c='blue')
+        plt.title("GAN Loss per Epoch")
+        plt.legend(['Discriminator', 'Generator'])
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.savefig('./bts_output/GAN_Loss_per_Epoch_final.png', transparent=True)
+        plt.close()
+
 if __name__ == '__main__':
   gan = GAN(rows=250)    
   gan.train(epochs=3000, batch_size=32, sample_interval=1)
