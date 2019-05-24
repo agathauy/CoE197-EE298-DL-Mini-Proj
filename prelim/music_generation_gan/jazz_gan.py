@@ -19,7 +19,7 @@ def get_notes():
     """ Get all the notes and chords from the midi files """
     notes = []
     i = 0
-    for file in glob.glob("jazz_data/*.mid"):
+    for file in glob.glob("jazz_data_trial/*.mid"):
         midi = converter.parse(file)
         i = i + 1
         if i > 5: break
@@ -327,4 +327,4 @@ class GAN():
 
 if __name__ == '__main__':
   gan = GAN(rows=100)    
-  gan.train(epochs=5000, batch_size=32, sample_interval=1)
+  gan.train(epochs=50000, batch_size=32, sample_interval=1)
