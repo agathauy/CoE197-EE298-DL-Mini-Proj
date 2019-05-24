@@ -494,7 +494,7 @@ def generate_notes(model, notes, network_input, n_vocab, random_seed=None):
         #print("max index: ")
         #print(index)
         result = index
-        
+
         prediction_output.append(result)
 
         pattern = np.append(pattern,index)
