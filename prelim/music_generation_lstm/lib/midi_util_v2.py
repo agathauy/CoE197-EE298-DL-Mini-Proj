@@ -11,11 +11,11 @@ import random
 
 DEBUG = False
 
-# The MIDI pitches we use.
-PITCHES = range(21,109,1)
-OFFSET = 109-21
-PITCHES_MAP = { p : i for i, p in enumerate(PITCHES) }
-print(len(PITCHES))
+# # The MIDI pitches we use.
+# PITCHES = range(21,109,1)
+# OFFSET = 109-21
+# PITCHES_MAP = { p : i for i, p in enumerate(PITCHES) }
+# print(len(PITCHES))
 
 def nearest_pow2(x):
     '''Normalize input to nearest power of 2, or midpoints between
@@ -36,7 +36,7 @@ def nearest_pow2(x):
         nearest = low
     return nearest
 
-def midi_to_array_one_hot(mid, quantization):
+def midi_to_array_one_hot(mid, quantization, PITCHES_TO_INDEX):
     '''Return array representation of a 4/4 time signature, MIDI object.
 
     Normalize the number of time steps in track to a power of 2. Then
@@ -80,11 +80,13 @@ def midi_to_array_one_hot(mid, quantization):
         print(normalized_num_steps)
         # pp.pprint(notes)
 
-    midi_array = np.zeros((normalized_num_steps, len(PITCHES)*2))
-    velocity_array = np.zeros((normalized_num_steps, len(PITCHES)))
+    midi_array = np.zeros((normalized_num_steps, len(PITCHES_TO_INDEX)*3))
+    #velocity_array = np.zeros((normalized_num_steps, len(PITCHES)))
     open_msgs = defaultdict(list)
 
+    print(notes[0:5])
     for (position, note_type, note_num, velocity) in notes:
+        position = int(position)
         if position == normalized_num_steps:
             # print 'Warning: truncating from position {} to {}'.format(position, normalized_num_steps - 1)
             position = normalized_num_steps - 1
@@ -94,13 +96,15 @@ def midi_to_array_one_hot(mid, quantization):
             # print 'Warning: skipping note at position {} (greater than {})'.format(position, normalized_num_steps)
             continue
 
-        if note_type == "note_on" and velocity > 0:
+        if note_type == "note_on":
+            print(position)
+            print(3*PITCHES_TO_INDEX[note_num])
             open_msgs[note_num].append((position, note_type, note_num, velocity))
-            midi_array[position, 2*PITCHES_MAP[note_num]] = 1
-            midi_array[position, 2*PITCHES_MAP[note_num]+1] = 1
-            velocity_array[position, PITCHES_MAP[note_num]] = velocity
-        elif note_type == 'note_off' or (note_type == 'note_on' and velocity == 0):
+            midi_array[position, 3*PITCHES_TO_INDEX[note_num]] = 1
+            midi_array[position, 3*PITCHES_TO_INDEX[note_num]+1] = 1
+            midi_array[position, 3*PITCHES_TO_INDEX[note_num]+2] = velocity
 
+        elif note_type == "note_off":
             note_on_open_msgs = open_msgs[note_num]
 
             if len(note_on_open_msgs) == 0:
@@ -111,13 +115,16 @@ def midi_to_array_one_hot(mid, quantization):
             open_msgs[note_num] = note_on_open_msgs[1:]
             current_pos = position
             while current_pos > stack_pos:
-                # if midi_array[position, PITCHES_MAP[note_num]] != 1:
-                midi_array[current_pos, 2*PITCHES_MAP[note_num]] = 0
-                midi_array[current_pos, 2*PITCHES_MAP[note_num]+1] = 1
-                velocity_array[current_pos, PITCHES_MAP[note_num]] = vel
+                midi_array[current_pos, 3*PITCHES_TO_INDEX[note_num]] = 0
+                midi_array[current_pos, 3*PITCHES_TO_INDEX[note_num]+1] = 1
+                midi_array[position, 3*PITCHES_TO_INDEX[note_num]+2] = vel
+
+                #velocity_array[current_pos, PITCHES_TO_INDEX[note_num]] = vel
                 current_pos -= 1
 
+
     for (position, note_type, note_num, velocity) in notes:
+        position = int(position)
         if position == normalized_num_steps:
             print('Warning: truncating from position {} to {}'.format(position, normalized_num_steps - 1))
             position = normalized_num_steps - 1
@@ -128,12 +135,11 @@ def midi_to_array_one_hot(mid, quantization):
             continue
         if note_type == "note_on" and velocity > 0:
             open_msgs[note_num].append((position, note_type, note_num, velocity))
-            midi_array[position, 2*PITCHES_MAP[note_num]] = 1
-            midi_array[position, 2*PITCHES_MAP[note_num]+1] = 1
-            velocity_array[position, PITCHES_MAP[note_num]] = velocity
+            midi_array[position, 2*PITCHES_TO_INDEX[note_num]] = 1
+            midi_array[position, 2*PITCHES_TO_INDEX[note_num]+1] = 1
+            midi_array[position, 3*PITCHES_TO_INDEX[note_num]+2] = velocity
 
-    assert len(midi_array) == len(velocity_array)
-    return midi_array, velocity_array
+    return midi_array
 
 def print_array(mid, array, quantization=4):
     '''Print a binary array representing midi notes.'''
