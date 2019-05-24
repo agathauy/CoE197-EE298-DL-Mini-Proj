@@ -141,7 +141,6 @@ def prepare_sequences(notes, n_vocab):
     network_input = np.reshape(network_input, (n_patterns, sequence_length, 1))
     print(network_input[0])
     print(network_input.shape)
-    sys.exit()
 
     # normalize input between 0 and 1
     network_input = network_input / float(n_vocab)

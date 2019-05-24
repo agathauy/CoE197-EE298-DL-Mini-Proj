@@ -199,7 +199,6 @@ def train_network(out_folder, in_folder, n_epochs=50):
         period=5,verbose=True, notes=notes, network_input=network_input)
 
     model.summary()
-    sys.exit()
     model.fit(network_input, network_output, epochs=n_epochs, batch_size=64, callbacks=[history,mc, mc_gd])
     model.save('./' + OUTPUT_FOLDER + '/LSTMmodel.h5')
 
