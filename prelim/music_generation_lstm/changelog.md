@@ -14,3 +14,6 @@
 
 ## lstm_single_instrument_v2
 - make use of quantization and do not manually do one-hot encoding
+
+## lstm_single_instrument_v3
+- one hot encoding including velocity

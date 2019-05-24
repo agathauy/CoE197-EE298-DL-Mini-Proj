@@ -72,7 +72,7 @@ Setting Input and Output Folder
 # OUTPUT_FOLDER = 'output/Bach_wv1041a'
 
 INPUT_FOLDER = './data/preprocessed/single_piano/midi_bts_boy_with_luv'
-OUTPUT_FOLDER = './output/lstm_single_instrument_v2/midi_bts_boy_with_luv'
+OUTPUT_FOLDER = './output/lstm_single_instrument_v3/midi_bts_boy_with_luv'
 
 PREPROCESSED_FOLDER =  OUTPUT_FOLDER + '/preprocessed'
 
@@ -122,11 +122,16 @@ class ModelCheckpoint_GenerateData(Callback):
             print('length_notes: ')
             #print(length_notes)
 
+            print("Generating midi and predicting")
+            start_time = time.time()
             prediction_output, random_seed = generate_notes(self.model, self.notes, self.network_input, length_notes)
             #print('prediction_output')
             #print(prediction_output)
-
+            start_create_time = time.time()
             create_midi(prediction_output, filepath, self.notes)
+            end_time = time.time()
+            print("CREATE MIDI TIME: {}".format(end_time - start_create_time))
+            print("TOTAL GENERATION TIME ELAPSED: {}".format(end_time - start_time))
             if self.verbose > 0:
                  print('\nEpoch %05d: saving data to %s' % (epoch + 1, filepath))
 
@@ -255,7 +260,7 @@ def prepare_sequences(notes, n_vocab):
 
 
     """
-    sequence_length = 100
+    sequence_length = 50
     #print(len(notes))
     #print(notes.shape)
     #print(notes[0])
@@ -406,7 +411,7 @@ def train_network(n_epochs=50):
     try:
 
         model.summary()
-        model.fit(network_input, network_output, epochs=n_epochs, batch_size=64, callbacks=[history,mc, mc_gd], validation_split=0.4)
+        model.fit(network_input, network_output, epochs=n_epochs, batch_size=64, callbacks=[history,mc, mc_gd])
         model.save('./' + OUTPUT_FOLDER + '/LSTMmodel.h5')
 
         # Use the model to generate a midi
@@ -417,6 +422,9 @@ def train_network(n_epochs=50):
 
     except KeyboardInterrupt:
         print("Keyboard interrupt")
+    except Exception as e:
+        print(e)
+        print("error in train_network")
 
     # Plot the model losses
     pd.DataFrame(history.history).plot()
@@ -708,7 +716,7 @@ def continue_training_network(start_epoch, end_epoch):
     try:
 
         model.summary()
-        model.fit(network_input, network_output, epochs=n_epochs, batch_size=64, callbacks=[history,mc, mc_gd], validation_split=0.4)
+        model.fit(network_input, network_output, epochs=n_epochs, batch_size=64, callbacks=[history,mc, mc_gd])
         model.save('./' + OUTPUT_FOLDER + '/LSTMmodel.h5')
 
         # Use the model to generate a midi
@@ -719,6 +727,9 @@ def continue_training_network(start_epoch, end_epoch):
 
     except KeyboardInterrupt:
         print("Keyboard interrupt")
+    except Exception as e:
+        print(e)
+        print("error in continue train_network")
 
     # Plot the model losses
     pd.DataFrame(history.history).plot()
@@ -733,24 +744,10 @@ Main
 ######################################################
 """
 
-# if __name__ == "__main__":
-#     start_time = time.time()
-#     try:
-#         train_network(500)
-#     except:
-#         print("Error in main")
-
-#     end_time = time.time()
-#     print("Total time elapsed: {}".format(end_time - start_time))
-
-
 if __name__ == "__main__":
     start_time = time.time()
     try:
-        #train_network(500)
-        start_epoch = 140
-        end_epoch = 500
-        continue_training_network(start_epoch, end_epoch)
+        train_network(500)
     except Exception as e:
         print(e)
         print("Error in main")
@@ -758,13 +755,29 @@ if __name__ == "__main__":
     end_time = time.time()
     print("Total time elapsed: {}".format(end_time - start_time))
 
+
 # if __name__ == "__main__":
-#     model_path = "/home/agatha/Documents/EE298z/miniproj-2/prelim/music_generation_lstm/output/lstm_single_instrument_v2/midi_bts_boy_with_luv/LSTMmodel_00000100.h5"
-# start_time = time.time()
+#     start_time = time.time()
+#     try:
+#         #train_network(500)
+#         start_epoch = 140
+#         end_epoch = 500
+#         continue_training_network(start_epoch, end_epoch)
+#     except Exception as e:
+#         print(e)
+#         print("Error in main")
 
-# generate_given_model_path(model_path, random_seed=1000)
+#     end_time = time.time()
+#     print("Total time elapsed: {}".format(end_time - start_time))
 
-# end_time = time.time()
-# print("Total time elapsed: {}".format(end_time - start_time))
+# if __name__ == "__main__":
+#     #model_path = "/home/agatha/Documents/EE298z/miniproj-2/prelim/music_generation_lstm/output/lstm_single_instrument_v2/midi_bts_boy_with_luv/LSTMmodel_00000100.h5"
+#     model_path = "./output/lstm_single_instrument_v3/midi_bts_boy_with_luv/LSTMmodel_00000010.h5"
+#     start_time = time.time()
+
+#     generate_given_model_path(model_path, random_seed=1000)
+
+#     end_time = time.time()
+#     print("Total time elapsed: {}".format(end_time - start_time))
 
 
