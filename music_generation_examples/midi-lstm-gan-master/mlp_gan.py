@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 import glob
-from __future__ import print_function, division
+#from __future__ import print_function, division
 from music21 import converter, instrument, note, chord, stream
 from keras.layers import Input, Dense, Reshape, Dropout, CuDNNLSTM, Bidirectional
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
@@ -11,14 +11,17 @@ from keras.layers.advanced_activations import LeakyReLU
 from keras.models import Sequential, Model
 from keras.optimizers import Adam
 from keras.utils import np_utils
+import time
 
 def get_notes():
     """ Get all the notes and chords from the midi files """
     notes = []
-
-    for file in glob.glob("Pokemon MIDIs/*.mid"):
+    i = 0
+    #for file in glob.glob("Pokemon MIDIs/*.mid"):
+    for file in glob.glob("midi_bts_4/*.mid"):
         midi = converter.parse(file)
-
+        i = i + 1
+        if i > 5: break
         print("Parsing %s" % file)
 
         notes_to_parse = None
@@ -202,6 +205,8 @@ class GAN():
 
     def train(self, epochs, batch_size=128, sample_interval=50):
 
+        print('[train]: Starting...')
+        time_start = time.time()
         # Load and convert the data
         notes = get_notes()
         n_vocab = len(set(notes))
@@ -211,6 +216,9 @@ class GAN():
         real = np.ones((batch_size, 1))
         fake = np.zeros((batch_size, 1))
         
+        # Insert saving; The generator image is saved every 500 steps
+        save_interval = 500
+
         # Training the model
         for epoch in range(epochs):
 
@@ -238,29 +246,73 @@ class GAN():
             # Train the generator (to have the discriminator label samples as real)
             g_loss = self.combined.train_on_batch(noise, real)
 
+
+
+            if (epoch + 1) % save_interval == 0:
+
+                # Save the generator model in a periodic basis
+                model_name = './midi_bts_4/bts_' + str(epoch)
+                self.generator.save(model_name + ".h5")
+
+                # Generate a midi file in a periodic basis
+                self.generate(notes, epoch)
+
+
             # Print the progress and save into loss lists
             if epoch % sample_interval == 0:
-              print ("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss[0], 100*d_loss[1], g_loss))
+              print ("%d [D loss: %f, acc.: %.2f%%] [G loss: %f] [time: %f]" % (epoch, d_loss[0], 100*d_loss[1], g_loss, time.time() - time_start))
               self.disc_loss.append(d_loss[0])
               self.gen_loss.append(g_loss)
         
-        self.generate(notes)
+        self.generate(notes, epoch)
         self.plot_loss()
+
+
+        time_end = time.time()
+        print('[train]: Ended. Time elapsed: {}'.format(time_end - time_start))
         
-    def generate(self, input_notes):
+    def generate(self, input_notes, epoch):
         # Get pitch names and store in a dictionary
+        print('[generate midi]: Starting...')
+        time_start = time.time()
         notes = input_notes
         pitchnames = sorted(set(item for item in notes))
+        #print(pitchnames)
+        #print(len(pitchnames))
         int_to_note = dict((number, note) for number, note in enumerate(pitchnames))
-        
+        #print(len(int_to_note))
         # Use random noise to generate sequences
         noise = np.random.normal(0, 1, (1, self.latent_dim))
         predictions = self.generator.predict(noise)
-        
-        pred_notes = [x*242+242 for x in predictions[0]]
+        #print(predictions[0])
+        pred_notes = []
+
+
+        old_max = 1
+        old_min = -1
+        new_max = 41
+        new_min = 0
+        old_range = old_max - old_min
+        new_range = new_max - new_min
+        for i, x in enumerate(predictions[0]):
+            entry = (((x - old_min)* new_range)/old_range) + new_min
+            # if x < 0:
+            #     entry = (x+1)*21
+            # else:
+            #     entry = (x*21) + 21
+            pred_notes.append(entry)
+        #pred_notes = [int((x+1)*89) for x in predictions[0]]
+        #pred_notes = [x*242+242 for x in predictions[0]]
+        #print(len(int_to_note))
+        #print(pred_notes)
         pred_notes = [int_to_note[int(x)] for x in pred_notes]
         
-        create_midi(pred_notes, 'gan_final')
+
+        file_name = './midi_bts_4_output/bts_' + str(epoch)
+        create_midi(pred_notes, file_name)
+        time_end = time.time()
+        print('[generate midi]: Ended. Time elapsed: {}'.format(time_end - time_start))
+
         
     def plot_loss(self):
         plt.plot(self.disc_loss, c='red')
@@ -269,7 +321,7 @@ class GAN():
         plt.legend(['Discriminator', 'Generator'])
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
-        plt.savefig('GAN_Loss_per_Epoch_final.png', transparent=True)
+        plt.savefig('./midi_bts_4_output/GAN_Loss_per_Epoch_final.png', transparent=True)
         plt.close()
 
 if __name__ == '__main__':

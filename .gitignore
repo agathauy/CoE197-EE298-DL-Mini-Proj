@@ -1,3 +1,6 @@
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
-data/
+data/nsynth*
+\.DS_Store
+*.pyc
+*.h5
