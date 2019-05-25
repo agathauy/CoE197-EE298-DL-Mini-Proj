@@ -2,12 +2,6 @@
 
 Submitted by Francis Marquez and Agatha Uy as a mini project for CoE 197/EE 298-Z Deep Learning.
 
-
-# Notes
-## To cut to 10s length
-ffmpeg -i yourfile.mp3 -ss 00:00:00 -t 10 yourfile_10s.mp3
-
-
 # CoE197-EE298-DL-Mini-Proj
 Submitted by Francis Marquez and Agatha Uy as a mini project for CoE 197/EE 298-Z Deep Learning.
 
