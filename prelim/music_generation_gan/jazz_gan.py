@@ -182,7 +182,7 @@ class GAN():
         validity = model(seq)
 
         return Model(seq, validity)
-      
+
     def build_generator(self):
 
         model = Sequential()
@@ -198,7 +198,7 @@ class GAN():
         model.add(Dense(np.prod(self.seq_shape), activation='tanh'))
         model.add(Reshape(self.seq_shape))
         model.summary()
-        
+
         noise = Input(shape=(self.latent_dim,))
         seq = model(noise)
 
