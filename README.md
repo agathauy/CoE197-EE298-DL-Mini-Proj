@@ -1,8 +1,4 @@
 # CoE197-EE298-DL-Mini-Proj
-
-Submitted by Francis Marquez and Agatha Uy as a mini project for CoE 197/EE 298-Z Deep Learning.
-
-# CoE197-EE298-DL-Mini-Proj
 Submitted by Francis Marquez and Agatha Uy as a mini project for CoE 197/EE 298-Z Deep Learning.
 
 
