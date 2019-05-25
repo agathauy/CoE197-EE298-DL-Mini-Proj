@@ -14,6 +14,9 @@ It is in fact possible to use just simple models to generate MIDI files that can
 
 We also observed that the LSTMs were having problems upon having too many states where it gets stuck in just having the same output over and over again. Thus, we note for future work that either another model, or an implementation with higher capacity is needed for an acceptable training time.
 
+Some data editing with regards to the low pitched chords of an audio file should also be done something about first before training. This is because these chords when misplaced, do not fit well with the other notes in a song despite capturing the structure. Manual adjustments to the generation of the composition, editing before, or editing after during the ideation stage would be solutions to this problem.
+
+
 ## Disclaimers
 We should not that we do NOT own any of the original input midi files inside this repo, nor the repos inside music_generation_examples. Those were used as references, as well as were used in attempts to be the basis of our work.
 
